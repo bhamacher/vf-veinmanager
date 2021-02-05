@@ -5,6 +5,7 @@
 #include "modman_util.h"
 
 #include <ve_eventsystem.h>
+#include <ve_commandevent.h>
 
 #include <QJsonDocument>
 
@@ -62,13 +63,16 @@ public slots:
     void setModulesPaused(bool t_paused);
 
 private:
+     void handleAddsAndRemoves(QEvent *t_event);
+private:
     static constexpr int s_entityId = 0;
-    static constexpr QLatin1String s_entityName = modman_util::to_latin1("_System");
+    static constexpr QLatin1String s_entityName = modman_util::to_latin1("_VEIN");
     static constexpr QLatin1String s_entityNameComponentName = modman_util::to_latin1("EntityName");
     static constexpr QLatin1String s_entitiesComponentName = modman_util::to_latin1("Entities");
 
 
     VeinEvent::StorageSystem *m_storageSystem = nullptr;
+    QSet<int> m_currentEntities;
     bool m_initDone=false;
     bool m_sessionReady=false;
     bool m_modulesPaused=false;
