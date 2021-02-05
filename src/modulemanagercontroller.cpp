@@ -7,9 +7,6 @@
 #include <vcmp_entitydata.h>
 #include <vcmp_introspectiondata.h>
 
-#include <QNetworkInterface>
-#include <QHostAddress>
-
 #include <QJsonArray>
 #include <QDateTime>
 
@@ -17,12 +14,6 @@
 constexpr QLatin1String ModuleManagerController::s_entityName;
 constexpr QLatin1String ModuleManagerController::s_entityNameComponentName;
 constexpr QLatin1String ModuleManagerController::s_entitiesComponentName;
-constexpr QLatin1String ModuleManagerController::s_sessionComponentName;
-constexpr QLatin1String ModuleManagerController::s_sessionsAvailableComponentName;
-constexpr QLatin1String ModuleManagerController::s_notificationMessagesComponentName;
-constexpr QLatin1String ModuleManagerController::s_loggedComponentsComponentName;
-constexpr QLatin1String ModuleManagerController::s_modulesPausedComponentName;
-constexpr QLatin1String ModuleManagerController::s_serverIpComponentName;
 
 ModuleManagerController::ModuleManagerController(QObject *t_parent) :
     VeinEvent::EventSystem(t_parent)
@@ -83,37 +74,8 @@ bool ModuleManagerController::processEvent(QEvent *t_event)
                 {
                     validated = true;
                 }
-                else if(cData->eventCommand() == VeinComponent::ComponentData::Command::CCMD_SET && //validate set event for _System.Session
-                        cData->entityId() == s_entityId)
-                {
-                    if(cData->componentName() == ModuleManagerController::s_sessionComponentName)
-                    {
-                        m_currentSession=cData->newValue().toString();
-                        if(m_sessionReady == true)
-                        {
-                            emit sigChangeSession(cData->newValue().toString());
-                            m_sessionReady = false;
-                        }
-                        t_event->accept();
-                    }
-                    else if(cData->componentName() == ModuleManagerController::s_notificationMessagesComponentName)
-                    {
-                        handleNotificationMessage(cData->newValue().toJsonObject());
-                        t_event->accept();
-                    }
-                    else if(cData->componentName() == ModuleManagerController::s_loggedComponentsComponentName)
-                    {
-                        validated=true;
-                    }
-                    else if(cData->componentName() == ModuleManagerController::s_modulesPausedComponentName)
-                    {
-                        validated=true;
-                        setModulesPaused(cData->newValue().toBool());
-                    }
-                }
             }
         }
-
         if(validated == true)
         {
             ///@todo @bug remove inconsistent behavior by sending a new event instead of rewriting the current event
@@ -123,6 +85,7 @@ bool ModuleManagerController::processEvent(QEvent *t_event)
             cEvent->eventData()->setEventTarget(VeinEvent::EventData::EventTarget::ET_ALL); //inform all users (may or may not result in network messages)
         }
     }
+
     return retVal;
 }
 
@@ -130,53 +93,25 @@ bool ModuleManagerController::processEvent(QEvent *t_event)
 
 
 
-void ModuleManagerController::initializeEntity(const QString &t_sessionPath, const QStringList &t_sessionList)
+void ModuleManagerController::initializeEntity()
 {
     if(m_storageSystem!=nullptr)
     {
         m_sessionReady=true;
-        m_currentSession=t_sessionPath;
-        m_availableSessions=t_sessionList;
 
         VeinComponent::ComponentData *initData=nullptr;
         VeinEvent::CommandEvent *initEvent = nullptr;
-
-
         initData = new VeinComponent::ComponentData();
         initData->setEntityId(s_entityId);
         initData->setCommand(VeinComponent::ComponentData::Command::CCMD_SET);
         initData->setComponentName(ModuleManagerController::s_entitiesComponentName);
         initData->setEventOrigin(VeinEvent::EventData::EventOrigin::EO_LOCAL);
         initData->setEventTarget(VeinEvent::EventData::EventTarget::ET_ALL);
-        qDebug() << "ENTITIES" << m_storageSystem->getEntityList() << QVariant::fromValue<QList<int> >(m_storageSystem->getEntityList()).value<QList<int> >();
-        initData->setNewValue(QVariant::fromValue<QList<int> >(m_storageSystem->getEntityList()));
+        initData->setNewValue(QVariant::fromValue<QList<int> >(QList<int>()));
 
         initEvent = new VeinEvent::CommandEvent(VeinEvent::CommandEvent::EventSubtype::NOTIFICATION, initData);
         emit sigSendEvent(initEvent);
         initEvent=nullptr;
-
-
-        initData = new VeinComponent::ComponentData();
-        initData->setEntityId(s_entityId);
-        initData->setCommand(VeinComponent::ComponentData::Command::CCMD_SET);
-        initData->setComponentName(ModuleManagerController::s_sessionComponentName);
-        initData->setNewValue(QVariant(m_currentSession));
-        initData->setEventOrigin(VeinEvent::EventData::EventOrigin::EO_LOCAL);
-        initData->setEventTarget(VeinEvent::EventData::EventTarget::ET_ALL);
-        initEvent = new VeinEvent::CommandEvent(VeinEvent::CommandEvent::EventSubtype::NOTIFICATION, initData);
-        emit sigSendEvent(initEvent);
-        initEvent=nullptr;
-
-
-        initData = new VeinComponent::ComponentData();
-        initData->setEntityId(s_entityId);
-        initData->setCommand(VeinComponent::ComponentData::Command::CCMD_SET);
-        initData->setComponentName(ModuleManagerController::s_sessionsAvailableComponentName);
-        initData->setNewValue(QVariant(m_availableSessions));
-        initData->setEventOrigin(VeinEvent::EventData::EventOrigin::EO_LOCAL);
-        initData->setEventTarget(VeinEvent::EventData::EventTarget::ET_ALL);
-        initEvent = new VeinEvent::CommandEvent(VeinEvent::CommandEvent::EventSubtype::NOTIFICATION, initData);
-        emit sigSendEvent(initEvent);
     }
     else
     {
@@ -194,21 +129,9 @@ void ModuleManagerController::initOnce()
 
         emit sigSendEvent(new VeinEvent::CommandEvent(VeinEvent::CommandEvent::EventSubtype::NOTIFICATION, systemData));
 
-        QVariantList ipAdressList;
-        for (const QHostAddress &address : QNetworkInterface::allAddresses()) {
-            if (address != QHostAddress(QHostAddress::LocalHost) && address != QHostAddress(QHostAddress::LocalHostIPv6))
-                ipAdressList.append(address.toString());
-        }
-
         QHash<QString, QVariant> componentData;
         componentData.insert(ModuleManagerController::s_entityNameComponentName, ModuleManagerController::s_entityName);
-        componentData.insert(ModuleManagerController::s_entitiesComponentName, QVariant());
-        componentData.insert(ModuleManagerController::s_sessionComponentName, QVariant(m_currentSession));
-        componentData.insert(ModuleManagerController::s_sessionsAvailableComponentName, QVariant(m_availableSessions));
-        componentData.insert(ModuleManagerController::s_notificationMessagesComponentName, QVariant(m_notificationMessages.toJson()));
-        componentData.insert(ModuleManagerController::s_loggedComponentsComponentName, QVariantMap());
-        componentData.insert(ModuleManagerController::s_modulesPausedComponentName, QVariant(false));
-        componentData.insert(ModuleManagerController::s_serverIpComponentName, ipAdressList);
+        componentData.insert(ModuleManagerController::s_entitiesComponentName, QVariantList());
 
         VeinComponent::ComponentData *initialData=nullptr;
         for(const QString &compName : componentData.keys())
@@ -222,7 +145,6 @@ void ModuleManagerController::initOnce()
             initialData->setEventTarget(VeinEvent::EventData::EventTarget::ET_ALL);
             emit sigSendEvent(new VeinEvent::CommandEvent(VeinEvent::CommandEvent::EventSubtype::NOTIFICATION, initialData));
         }
-
         m_initDone = true;
     }
 }
@@ -236,23 +158,6 @@ void ModuleManagerController::setModulesPaused(bool t_paused)
     }
 }
 
-void ModuleManagerController::handleNotificationMessage(QJsonObject t_message)
-{
-    Q_ASSERT(t_message.isEmpty() == false);
-    VeinComponent::ComponentData *notificationMessagesData = new VeinComponent::ComponentData();
-    VeinEvent::CommandEvent *emDataEvent = nullptr;
-    notificationMessagesData->setEntityId(s_entityId);
-    notificationMessagesData->setCommand(VeinComponent::ComponentData::Command::CCMD_SET);
-    notificationMessagesData->setComponentName(s_notificationMessagesComponentName);
-    notificationMessagesData->setEventOrigin(VeinEvent::EventData::EventOrigin::EO_LOCAL);
-    notificationMessagesData->setEventTarget(VeinEvent::EventData::EventTarget::ET_ALL);
 
-    QJsonArray tmpArray = m_notificationMessages.array();
-    tmpArray.append(t_message);
-    m_notificationMessages.setArray(tmpArray);
-    notificationMessagesData->setNewValue(m_notificationMessages.toJson());
 
-    emDataEvent = new VeinEvent::CommandEvent(VeinEvent::CommandEvent::EventSubtype::NOTIFICATION, notificationMessagesData);
-    emit sigSendEvent(emDataEvent);
-}
 
