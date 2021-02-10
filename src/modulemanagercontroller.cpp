@@ -7,6 +7,12 @@
 #include <vcmp_entitydata.h>
 #include <vcmp_introspectiondata.h>
 
+#include <vn_networksystem.h>
+#include <vn_tcpsystem.h>
+#include <vn_introspectionsystem.h>
+#include <vs_veinhash.h>
+
+
 #include <QJsonArray>
 #include <QDateTime>
 
@@ -20,6 +26,14 @@ ModuleManagerController::ModuleManagerController(QObject *t_parent) :
     VeinEvent::EventSystem(t_parent)
 {
     QObject::connect(this,&EventSystem::sigAttached,this,&ModuleManagerController::initOnce);
+    m_introspectionSystem = new VeinNet::IntrospectionSystem(this);
+    m_storageSystem = new VeinStorage::VeinHash(this);
+    m_networkSystem = new VeinNet::NetworkSystem(this);
+    m_tcpSystem = new VeinNet::TcpSystem(this);
+    connect(m_introspectionSystem,&VeinEvent::EventSystem::sigSendEvent,this,&VeinEvent::EventSystem::sigSendEvent);
+    connect(m_storageSystem,&VeinEvent::EventSystem::sigSendEvent,this,&VeinEvent::EventSystem::sigSendEvent);
+    connect(m_networkSystem,&VeinEvent::EventSystem::sigSendEvent,this,&VeinEvent::EventSystem::sigSendEvent);
+    connect(m_tcpSystem ,&VeinEvent::EventSystem::sigSendEvent,this,&VeinEvent::EventSystem::sigSendEvent);
 }
 
 constexpr int ModuleManagerController::getEntityId()
@@ -35,6 +49,11 @@ VeinEvent::StorageSystem *ModuleManagerController::getStorageSystem() const
 void ModuleManagerController::setStorage(VeinEvent::StorageSystem *t_storageSystem)
 {
     m_storageSystem = t_storageSystem;
+}
+
+void ModuleManagerController::startServer(quint16 t_port, bool t_systemdSocket)
+{
+    m_tcpSystem->startServer(t_port,t_systemdSocket);
 }
 
 bool ModuleManagerController::processEvent(QEvent *t_event)
@@ -90,6 +109,12 @@ bool ModuleManagerController::processEvent(QEvent *t_event)
         }
         handleAddsAndRemoves(cEvent);
     }
+
+    m_introspectionSystem->processEvent(t_event);
+    m_storageSystem->processEvent(t_event);
+    m_networkSystem->processEvent(t_event);
+    m_tcpSystem->processEvent(t_event);
+
 
     return retVal;
 }

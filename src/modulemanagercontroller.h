@@ -26,7 +26,8 @@ public:
    * @param t_storageSystem
    */
     void setStorage(VeinEvent::StorageSystem *t_storageSystem);
-    static constexpr QLatin1String s_notificationMessagesComponentName = modman_util::to_latin1("Error_Messages");
+
+    void startServer(quint16 t_port, bool t_systemdSocket=true);
 
     // EventSystem interface
 public:
@@ -72,11 +73,18 @@ private:
     static constexpr QLatin1String s_entitiesComponentName = modman_util::to_latin1("Entities");
 
 
+    VeinEvent::EventSystem* m_introspectionSystem = nullptr;;
     VeinEvent::StorageSystem *m_storageSystem = nullptr;
     QSet<int> m_currentEntities;
+    VeinEvent::EventSystem* m_networkSystem = nullptr;;
+    VeinNet::TcpSystem* m_tcpSystem = nullptr;;
+
     bool m_initDone=false;
     bool m_sessionReady=false;
     bool m_modulesPaused=false;
+
+
+
 };
 
 #endif // MODULEMANAGERSETTINGS_H
