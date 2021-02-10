@@ -6,6 +6,7 @@
 
 #include <ve_eventsystem.h>
 #include <ve_commandevent.h>
+#include <vn_tcpsystem.h>
 
 #include <QJsonDocument>
 

@@ -24,10 +24,14 @@ include(FeatureSummary)
 include(GNUInstallDirs)
 
 #Find dependecies
-find_package(Qt5 COMPONENTS Core Gui CONFIG REQUIRED)
+find_package(Qt5 COMPONENTS Core Gui Network CONFIG REQUIRED)
 find_package(VfComponent REQUIRED)
 find_package(VfHelpers REQUIRED)
 find_package(VfEvent REQUIRED)
+find_package(VfTcp REQUIRED)
+find_package(VfNet2 REQUIRED)
+find_package(VfCpp REQUIRED)
+find_package(VfStorageHash REQUIRED)
 
 
 #sum up project Files 
@@ -59,9 +63,14 @@ target_link_libraries(VfVeinmanager
     PRIVATE
     Qt5::Core
     Qt5::Gui
+    Qt5::Network
     VeinMeta::VfHelpers
     VeinMeta::VfEvent
     VeinMeta::VfComponent
+    VeinMeta::VfNet2
+    VeinMeta::VfTcp
+    VeinMeta::VfStorageHash
+    VeinMeta::VfCpp
     )
 
 
