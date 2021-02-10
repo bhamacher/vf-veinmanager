@@ -10,11 +10,16 @@
 
 #include <QJsonDocument>
 
+#include <veinmoduleentity.h>
+#include <veinmodulecomponent.h>
+#include <veinsharedcomp.h>
+#include <veinrpcfuture.h>
+
 namespace VeinEvent {
 class StorageSystem;
 }
 
-class ModuleManagerController : public VeinEvent::EventSystem
+class ModuleManagerController : public VfCpp::VeinModuleEntity
 {
     Q_OBJECT
 public:
@@ -32,21 +37,6 @@ public:
     // EventSystem interface
 public:
     bool processEvent(QEvent *t_event) override;
-
-signals:
-    /**
-   * @brief emitted if the session is switched via the "Session" component
-   * @param t_newSession
-   */
-    void sigChangeSession(const QString &t_newSession);
-    /**
-   * @brief emitted if the modules are paused via the "ModulesPaused" component
-   * @param t_paused
-   */
-    void sigModulesPausedChanged(bool t_paused);
-
-
-
 public slots:
     /**
    * @brief connected to the signal ModuleManager::sigModulesLoaded, loads the list of entities from the m_storageSystem then sets up the data of all components
@@ -58,11 +48,6 @@ public slots:
    * @brief sends add events for the entity and all components
    */
     void initOnce();
-    /**
-   * @brief emits sigModulesPausedChanged
-   * @param t_paused
-   */
-    void setModulesPaused(bool t_paused);
 
 private:
      void handleAddsAndRemoves(QEvent *t_event);
@@ -75,13 +60,11 @@ private:
 
     VeinEvent::EventSystem* m_introspectionSystem = nullptr;;
     VeinEvent::StorageSystem *m_storageSystem = nullptr;
-    QSet<int> m_currentEntities;
     VeinEvent::EventSystem* m_networkSystem = nullptr;;
     VeinNet::TcpSystem* m_tcpSystem = nullptr;;
 
+    VfCpp::VeinSharedComp<QList<int>> m_currentEntities;
     bool m_initDone=false;
-    bool m_sessionReady=false;
-    bool m_modulesPaused=false;
 
 
 

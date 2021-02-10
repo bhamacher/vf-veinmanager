@@ -23,7 +23,7 @@ constexpr QLatin1String ModuleManagerController::s_entitiesComponentName;
 
 
 ModuleManagerController::ModuleManagerController(QObject *t_parent) :
-    VeinEvent::EventSystem(t_parent)
+    VfCpp::VeinModuleEntity(0,t_parent)
 {
     QObject::connect(this,&EventSystem::sigAttached,this,&ModuleManagerController::initOnce);
     m_introspectionSystem = new VeinNet::IntrospectionSystem(this);
@@ -110,10 +110,13 @@ bool ModuleManagerController::processEvent(QEvent *t_event)
         handleAddsAndRemoves(cEvent);
     }
 
+
     m_introspectionSystem->processEvent(t_event);
     m_storageSystem->processEvent(t_event);
     m_networkSystem->processEvent(t_event);
     m_tcpSystem->processEvent(t_event);
+
+    VfCpp::VeinModuleEntity::processEvent(t_event);
 
 
     return retVal;
@@ -127,27 +130,10 @@ void ModuleManagerController::initializeEntity()
 {
     if(m_storageSystem!=nullptr)
     {
-        m_sessionReady=true;
-
-        VeinComponent::ComponentData *initData=nullptr;
-        VeinEvent::CommandEvent *initEvent = nullptr;
-
-
-        initData = new VeinComponent::ComponentData();
-        initData->setEntityId(s_entityId);
-        initData->setCommand(VeinComponent::ComponentData::Command::CCMD_SET);
-        initData->setComponentName(ModuleManagerController::s_entitiesComponentName);
-        initData->setEventOrigin(VeinEvent::EventData::EventOrigin::EO_LOCAL);
-        initData->setEventTarget(VeinEvent::EventData::EventTarget::ET_ALL);
         qDebug() << "ENTITIES" << m_storageSystem->getEntityList() << QVariant::fromValue<QList<int> >(m_storageSystem->getEntityList()).value<QList<int> >();
         if(m_storageSystem->getEntityList().size() > 0){
-            m_currentEntities = QSet<int>(m_storageSystem->getEntityList().begin(),m_storageSystem->getEntityList().end());
+            m_currentEntities.setValue(QSet<int>(m_storageSystem->getEntityList().begin(),m_storageSystem->getEntityList().end()).toList());
         }
-        initData->setNewValue(QVariant::fromValue<QList<int> >(m_currentEntities.values()));
-
-        initEvent = new VeinEvent::CommandEvent(VeinEvent::CommandEvent::EventSubtype::NOTIFICATION, initData);
-        emit sigSendEvent(initEvent);
-        initEvent=nullptr;
     }
     else
     {
@@ -159,40 +145,14 @@ void ModuleManagerController::initOnce()
 {
     if(m_initDone == false)
     {
+        createComponent("EntityName","_VEIN",VfCpp::cVeinModuleComponent::Direction::constant);
+        m_currentEntities=createComponent("Entities",QVariant::fromValue<QList<int>>(QList<int>()),VfCpp::cVeinModuleComponent::Direction::out);
         VeinComponent::EntityData *systemData = new VeinComponent::EntityData();
         systemData->setCommand(VeinComponent::EntityData::Command::ECMD_ADD);
         systemData->setEntityId(s_entityId);
-
         emit sigSendEvent(new VeinEvent::CommandEvent(VeinEvent::CommandEvent::EventSubtype::NOTIFICATION, systemData));
-
-        QVariantList ipAdressList;
-        QHash<QString, QVariant> componentData;
-        componentData.insert(ModuleManagerController::s_entityNameComponentName, ModuleManagerController::s_entityName);
-        componentData.insert(ModuleManagerController::s_entitiesComponentName, QVariantList());
-
-        VeinComponent::ComponentData *initialData=nullptr;
-         for(const QString &compName : componentData.keys())
-         {
-             initialData = new VeinComponent::ComponentData();
-             initialData->setEntityId(s_entityId);
-             initialData->setCommand(VeinComponent::ComponentData::Command::CCMD_ADD);
-             initialData->setComponentName(compName);
-             initialData->setNewValue(componentData.value(compName));
-             initialData->setEventOrigin(VeinEvent::EventData::EventOrigin::EO_LOCAL);
-             initialData->setEventTarget(VeinEvent::EventData::EventTarget::ET_ALL);
-             emit sigSendEvent(new VeinEvent::CommandEvent(VeinEvent::CommandEvent::EventSubtype::NOTIFICATION, initialData));
-         }
         initializeEntity();
         m_initDone = true;
-    }
-}
-
-void ModuleManagerController::setModulesPaused(bool t_paused)
-{
-    if(t_paused != m_modulesPaused)
-    {
-        m_modulesPaused = t_paused;
-        emit sigModulesPausedChanged(m_modulesPaused);
     }
 }
 
@@ -203,31 +163,15 @@ void ModuleManagerController::handleAddsAndRemoves(QEvent *t_event)
         VeinComponent::EntityData* eData=static_cast<VeinComponent::EntityData*>(cEvent->eventData());
         if(eData->eventCommand() == VeinComponent::EntityData::Command::ECMD_ADD)
         {
-            m_currentEntities.insert(eData->entityId());
-            VeinComponent::ComponentData* entityData;
-            entityData = new VeinComponent::ComponentData();
-            entityData->setEntityId(s_entityId);
-            entityData->setCommand(VeinComponent::ComponentData::Command::CCMD_SET);
-            entityData->setComponentName(ModuleManagerController::s_entitiesComponentName);
-            entityData->setEventOrigin(VeinEvent::EventData::EventOrigin::EO_LOCAL);
-            entityData->setEventTarget(VeinEvent::EventData::EventTarget::ET_ALL);
-            entityData->setNewValue(QVariant::fromValue<QList<int> >(m_currentEntities.values()));
-            VeinEvent::CommandEvent* entityEvent = new VeinEvent::CommandEvent(VeinEvent::CommandEvent::EventSubtype::NOTIFICATION, entityData);
-            emit sigSendEvent(entityEvent );
+            QSet<int> tmpSet=m_currentEntities.value().toSet();
+            tmpSet.insert(eData->entityId());
+            m_currentEntities=tmpSet.toList();
         }
         else if(eData->eventCommand() == VeinComponent::EntityData::Command::ECMD_REMOVE)
         {
-            m_currentEntities.remove(eData->entityId());
-            VeinComponent::ComponentData* entityData;
-            entityData = new VeinComponent::ComponentData();
-            entityData->setEntityId(s_entityId);
-            entityData->setCommand(VeinComponent::ComponentData::Command::CCMD_SET);
-            entityData->setComponentName(ModuleManagerController::s_entitiesComponentName);
-            entityData->setEventOrigin(VeinEvent::EventData::EventOrigin::EO_LOCAL);
-            entityData->setEventTarget(VeinEvent::EventData::EventTarget::ET_ALL);
-            entityData->setNewValue(QVariant::fromValue<QList<int> >(m_currentEntities.values()));
-            VeinEvent::CommandEvent* entityEvent = new VeinEvent::CommandEvent(VeinEvent::CommandEvent::EventSubtype::NOTIFICATION, entityData);
-            emit sigSendEvent(entityEvent );
+            QSet<int> tmpSet=m_currentEntities.value().toSet();
+            tmpSet.remove(eData->entityId());
+            m_currentEntities=tmpSet.toList();
         }
     }
     else if(cEvent->eventData()->type() == VeinComponent::ComponentData::dataType()){
