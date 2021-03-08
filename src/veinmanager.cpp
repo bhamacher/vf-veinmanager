@@ -1,4 +1,4 @@
-#include "modulemanagercontroller.h"
+#include "veinmanager.h"
 
 #include <ve_eventdata.h>
 #include <ve_commandevent.h>
@@ -17,15 +17,15 @@
 #include <QDateTime>
 
 //constexpr definition, see: https://stackoverflow.com/questions/8016780/undefined-reference-to-static-constexpr-char
-constexpr QLatin1String ModuleManagerController::s_entityName;
-constexpr QLatin1String ModuleManagerController::s_entityNameComponentName;
-constexpr QLatin1String ModuleManagerController::s_entitiesComponentName;
+constexpr QLatin1String VeinManager::s_entityName;
+constexpr QLatin1String VeinManager::s_entityNameComponentName;
+constexpr QLatin1String VeinManager::s_entitiesComponentName;
 
 
-ModuleManagerController::ModuleManagerController(QObject *t_parent) :
+VeinManager::VeinManager(QObject *t_parent) :
     VfCpp::VeinModuleEntity(0,t_parent)
 {
-    QObject::connect(this,&EventSystem::sigAttached,this,&ModuleManagerController::initOnce);
+    QObject::connect(this,&EventSystem::sigAttached,this,&VeinManager::initOnce);
     m_introspectionSystem = new VeinNet::IntrospectionSystem(this);
     m_storageSystem = new VeinStorage::VeinHash(this);
     m_networkSystem = new VeinNet::NetworkSystem(this);
@@ -36,27 +36,27 @@ ModuleManagerController::ModuleManagerController(QObject *t_parent) :
     connect(m_tcpSystem ,&VeinEvent::EventSystem::sigSendEvent,this,&VeinEvent::EventSystem::sigSendEvent);
 }
 
-constexpr int ModuleManagerController::getEntityId()
+constexpr int VeinManager::getEntityId()
 {
     return s_entityId;
 }
 
-VeinEvent::StorageSystem *ModuleManagerController::getStorageSystem() const
+VeinEvent::StorageSystem *VeinManager::getStorageSystem() const
 {
     return m_storageSystem;
 }
 
-void ModuleManagerController::setStorage(VeinEvent::StorageSystem *t_storageSystem)
+void VeinManager::setStorage(VeinEvent::StorageSystem *t_storageSystem)
 {
     m_storageSystem = t_storageSystem;
 }
 
-void ModuleManagerController::startServer(quint16 t_port, bool t_systemdSocket)
+void VeinManager::startServer(quint16 t_port, bool t_systemdSocket)
 {
     m_tcpSystem->startServer(t_port,t_systemdSocket);
 }
 
-bool ModuleManagerController::processEvent(QEvent *t_event)
+bool VeinManager::processEvent(QEvent *t_event)
 {
     bool retVal = false;
 
@@ -126,7 +126,7 @@ bool ModuleManagerController::processEvent(QEvent *t_event)
 
 
 
-void ModuleManagerController::initializeEntity()
+void VeinManager::initializeEntity()
 {
     if(m_storageSystem!=nullptr)
     {
@@ -141,22 +141,18 @@ void ModuleManagerController::initializeEntity()
     }
 }
 
-void ModuleManagerController::initOnce()
+void VeinManager::initOnce()
 {
     if(m_initDone == false)
     {
         createComponent("EntityName","_VEIN",VfCpp::cVeinModuleComponent::Direction::constant);
-        m_currentEntities=createComponent("Entities",QVariant::fromValue<QList<int>>(QList<int>()),VfCpp::cVeinModuleComponent::Direction::out);
-        VeinComponent::EntityData *systemData = new VeinComponent::EntityData();
-        systemData->setCommand(VeinComponent::EntityData::Command::ECMD_ADD);
-        systemData->setEntityId(s_entityId);
-        emit sigSendEvent(new VeinEvent::CommandEvent(VeinEvent::CommandEvent::EventSubtype::NOTIFICATION, systemData));
+        m_currentEntities=createComponent("Entities",QVariantList(),VfCpp::cVeinModuleComponent::Direction::out);
         initializeEntity();
         m_initDone = true;
     }
 }
 
-void ModuleManagerController::handleAddsAndRemoves(QEvent *t_event)
+void VeinManager::handleAddsAndRemoves(QEvent *t_event)
 {
     VeinEvent::CommandEvent *cEvent= static_cast<VeinEvent::CommandEvent *>(t_event);
     if(cEvent->eventData()->type() == VeinComponent::EntityData::dataType()) {
@@ -165,13 +161,13 @@ void ModuleManagerController::handleAddsAndRemoves(QEvent *t_event)
         {
             QSet<int> tmpSet=m_currentEntities.value().toSet();
             tmpSet.insert(eData->entityId());
-            m_currentEntities=tmpSet.toList();
+            m_currentEntities=tmpSet.values();
         }
         else if(eData->eventCommand() == VeinComponent::EntityData::Command::ECMD_REMOVE)
         {
             QSet<int> tmpSet=m_currentEntities.value().toSet();
             tmpSet.remove(eData->entityId());
-            m_currentEntities=tmpSet.toList();
+            m_currentEntities=tmpSet.values();
         }
     }
     else if(cEvent->eventData()->type() == VeinComponent::ComponentData::dataType()){

@@ -1,5 +1,5 @@
-#ifndef MODULEMANAGERSETTINGS_H
-#define MODULEMANAGERSETTINGS_H
+#ifndef VEINMANAGERSETTINGS_H
+#define VEINMANAGERSETTINGS_H
 
 
 #include "modman_util.h"
@@ -19,11 +19,11 @@ namespace VeinEvent {
 class StorageSystem;
 }
 
-class ModuleManagerController : public VfCpp::VeinModuleEntity
+class VeinManager : public VfCpp::VeinModuleEntity
 {
     Q_OBJECT
 public:
-    explicit ModuleManagerController(QObject *t_parent = nullptr);
+    explicit VeinManager(QObject *t_parent = nullptr);
     static constexpr int getEntityId();
     VeinEvent::StorageSystem *getStorageSystem() const;
     /**
