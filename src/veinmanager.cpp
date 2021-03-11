@@ -132,7 +132,7 @@ void VeinManager::initializeEntity()
     {
         qDebug() << "ENTITIES" << m_storageSystem->getEntityList() << QVariant::fromValue<QList<int> >(m_storageSystem->getEntityList()).value<QList<int> >();
         if(m_storageSystem->getEntityList().size() > 0){
-            m_currentEntities.setValue(QSet<int>(m_storageSystem->getEntityList().begin(),m_storageSystem->getEntityList().end()).toList());
+            m_currentEntities.setValue(QSet<int>(m_storageSystem->getEntityList().begin(),m_storageSystem->getEntityList().end()).values());
         }
     }
     else
@@ -159,13 +159,13 @@ void VeinManager::handleAddsAndRemoves(QEvent *t_event)
         VeinComponent::EntityData* eData=static_cast<VeinComponent::EntityData*>(cEvent->eventData());
         if(eData->eventCommand() == VeinComponent::EntityData::Command::ECMD_ADD)
         {
-            QSet<int> tmpSet=m_currentEntities.value().toSet();
+            QSet<int> tmpSet=QSet<int>(m_currentEntities.value().begin(),m_currentEntities.value().end());
             tmpSet.insert(eData->entityId());
             m_currentEntities=tmpSet.values();
         }
         else if(eData->eventCommand() == VeinComponent::EntityData::Command::ECMD_REMOVE)
         {
-            QSet<int> tmpSet=m_currentEntities.value().toSet();
+            QSet<int> tmpSet=QSet<int>(m_currentEntities.value().begin(),m_currentEntities.value().end());
             tmpSet.remove(eData->entityId());
             m_currentEntities=tmpSet.values();
         }
