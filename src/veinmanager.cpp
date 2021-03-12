@@ -159,13 +159,17 @@ void VeinManager::handleAddsAndRemoves(QEvent *t_event)
         VeinComponent::EntityData* eData=static_cast<VeinComponent::EntityData*>(cEvent->eventData());
         if(eData->eventCommand() == VeinComponent::EntityData::Command::ECMD_ADD)
         {
-            QSet<int> tmpSet=QSet<int>(m_currentEntities.value().begin(),m_currentEntities.value().end());
+            // we have to store the value inside a temp variable because calling value creates a new
+            // object each time. In the follwoing call the begin and end alement are located in different lists.
+            QList<int> compValueBuf= m_currentEntities.value();
+            QSet<int> tmpSet=QSet<int>(compValueBuf.begin(),compValueBuf.end());
             tmpSet.insert(eData->entityId());
             m_currentEntities=tmpSet.values();
         }
         else if(eData->eventCommand() == VeinComponent::EntityData::Command::ECMD_REMOVE)
         {
-            QSet<int> tmpSet=QSet<int>(m_currentEntities.value().begin(),m_currentEntities.value().end());
+            QList<int> compValueBuf= m_currentEntities.value();
+            QSet<int> tmpSet=QSet<int>(compValueBuf.begin(),compValueBuf.end());
             tmpSet.remove(eData->entityId());
             m_currentEntities=tmpSet.values();
         }
